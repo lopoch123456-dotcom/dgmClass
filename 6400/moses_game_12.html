@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MOSES — Pengcheng Lu</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Press Start 2P',monospace}
+canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+#hud{position:fixed;top:0;left:0;right:0;z-index:20;padding:10px 18px;background:rgba(0,0,0,.88);border-bottom:3px solid #4af;display:none;align-items:center;justify-content:space-between;gap:12px}
+#hud .hitem{font-size:11px;color:#fff;white-space:nowrap}
+#hud .htitle{color:#4af;font-size:13px;letter-spacing:3px}
+#hud .hphase{font-size:10px;color:#adf}
+#hud .cats{display:flex;gap:10px;align-items:center}
+#hud .cat{font-size:10px;display:flex;align-items:center;gap:4px}
+#hud .pip{width:10px;height:10px;border-radius:50%;border:1.5px solid #555;display:inline-block}
+#msgbox{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);width:90%;max-width:460px;background:#000e;border:3px solid #4af;padding:16px 20px;text-align:center;z-index:30;display:none;pointer-events:all}
+#msgbox .mt{color:#4af;font-size:11px;margin-bottom:10px;letter-spacing:1px}
+#msgbox .mb{color:#ddd;font-size:9px;line-height:2.2}
+#msgbox button{margin-top:12px;background:#4af;color:#000;border:none;font-family:inherit;font-size:9px;padding:7px 18px;cursor:pointer}
+#intro{position:fixed;inset:0;background:#0e1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:50;text-align:center;padding:24px}
+#intro h1{color:#fff;font-size:clamp(24px,6vw,52px);letter-spacing:6px;text-shadow:0 0 30px #4af,0 0 60px #4af5;margin-bottom:18px;animation:glow 2s infinite}
+#intro .by{color:#adf;font-size:clamp(8px,1.8vw,12px);line-height:2.4;margin-bottom:12px}
+#intro .tip{color:#557;font-size:clamp(7px,1.4vw,9px);line-height:2.2;margin-bottom:24px;border:1px solid #2a3a5a;padding:12px 20px;max-width:420px}
+#intro button{background:#4af;color:#000;border:none;font-family:inherit;font-size:clamp(10px,2.2vw,14px);padding:13px 34px;cursor:pointer;animation:pulse .9s infinite}
+#intro .ctrl{color:#334;font-size:clamp(6px,1.2vw,8px);margin-top:16px}
+/* cinematic subtitle overlay */
+#subtitle{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:40;text-align:center;pointer-events:none;opacity:0;transition:opacity .6s}
+#subtitle .st{color:#fff;font-size:clamp(8px,1.8vw,11px);line-height:2;text-shadow:0 0 10px #000,0 0 20px #000}
+/* final card */
+#endcard{position:fixed;inset:0;background:#00001a;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:60;padding:20px;text-align:center}
+#endcard .ec-title{color:#ffe050;font-size:clamp(16px,4vw,36px);letter-spacing:4px;margin-bottom:12px;text-shadow:0 0 30px #ffe05088;animation:glow 2s infinite}
+#endcard .ec-sub{color:#adf;font-size:clamp(7px,1.6vw,10px);line-height:2.4;margin-bottom:8px}
+#endcard .ec-name{color:#fff;font-size:clamp(8px,1.8vw,12px);margin-bottom:20px;animation:pulse 1.5s infinite}
+#endcard button{background:#4af;color:#000;border:none;font-family:inherit;font-size:clamp(8px,1.8vw,11px);padding:11px 26px;cursor:pointer}
+#dpad{position:fixed;bottom:14px;left:14px;z-index:25;display:none;flex-direction:column;gap:4px;pointer-events:all}
+#dpad .dr{display:flex;gap:4px}
+#dpad button{width:52px;height:52px;background:rgba(0,20,50,.9);border:2px solid #4af8;color:#4af;font-size:22px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;border-radius:6px}
+@keyframes glow{0%,100%{text-shadow:0 0 20px #4af,0 0 40px #4af4}50%{text-shadow:0 0 50px #4af,0 0 100px #4af8}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <h1>MOSES</h1>
+  <div class="by">THE ADVENTURE OF<br>路鹏程 · PENGCHENG LU<br><span style="color:#445;font-size:.85em">Designer · Canadian · Music Lover</span></div>
+  <div class="tip">You stand on a floating island shaped like MOSES.<br>Walk across the letters. Collect 9 icons of your life.<br><br>✏️ Design &nbsp;·&nbsp; 🍁 Canada &nbsp;·&nbsp; 🎵 Music<br><br>Collect them all. Your name will be revealed.</div>
+  <button id="startBtn">▶ &nbsp;START</button>
+  <div class="ctrl">Arrow keys / WASD &nbsp;|&nbsp; Mobile: D-pad</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="hud">
+  <div class="hitem" id="hcol">✦ 0 / 9</div>
+  <div class="htitle">MOSES</div>
+  <div class="cats">
+    <div class="cat"><span>✏️</span><span class="pip" id="p0"></span><span class="pip" id="p1"></span><span class="pip" id="p2"></span></div>
+    <div class="cat"><span>🍁</span><span class="pip" id="p3"></span><span class="pip" id="p4"></span><span class="pip" id="p5"></span></div>
+    <div class="cat"><span>🎵</span><span class="pip" id="p6"></span><span class="pip" id="p7"></span><span class="pip" id="p8"></span></div>
+  </div>
+  <div class="hphase" id="hphase">Explore</div>
+</div>
+
+<div id="msgbox">
+  <div class="mt" id="mt"></div>
+  <div class="mb" id="mb"></div>
+  <button onclick="closeMsg()">OK ▶</button>
+</div>
+
+<div id="subtitle"><div class="st" id="sttext"></div></div>
+
+<div id="dpad">
+  <div class="dr"><div style="width:52px"></div><button id="bu">▲</button></div>
+  <div class="dr"><button id="bl">◀</button><div style="width:52px"></div><button id="br">▶</button></div>
+  <div class="dr"><div style="width:52px"></div><button id="bd">▼</button></div>
+</div>
+
+<div id="endcard">
+  <div class="ec-title">M O S E S</div>
+  <div class="ec-sub">The island you walked was always your name.<br><br>Designer · Canadian · Music Lover</div>
+  <div class="ec-name">路鹏程 · Pengcheng (Moses) Lu</div>
+  <button onclick="location.reload()">▶ PLAY AGAIN</button>
+</div>
+
+<script>
+"use strict";
+
+// ═══════════════════════════════════════════════════
+// ISLAND MAP 60×25
+// ═══════════════════════════════════════════════════
+const ISLAND_GRID = [
+  [0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,0,0],
+  [0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1],
+  [0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1],
+  [0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1],
+  [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1],
+  [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,1],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,0,0,0,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,0,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,0,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,0,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,0,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,0,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,0,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+  [1,1,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+  [1,1,1,1,1,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,0,0,0,0,0,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,0,0],
+];
+const GRID_COLS=60, GRID_ROWS=25;
+
+// Map layout
+const CELL=3, PAD_X=4, PAD_T=4, PAD_B=14;
+const MAP_W=GRID_COLS*CELL+PAD_X*2;
+const MAP_H=GRID_ROWS*CELL+PAD_T+PAD_B;
+const ISL_X=PAD_X, ISL_Y=PAD_T;
+const SEA_Y=ISL_Y+GRID_ROWS*CELL+2;
+
+let MAP=[], WALK=null;
+function setTile(x,y,t){if(x<0||x>=MAP_W||y<0||y>=MAP_H)return;MAP[y][x]=t;WALK[y*MAP_W+x]=t?1:0;}
+function isGround(x,y){if(x<0||x>=MAP_W||y<0||y>=MAP_H)return false;return WALK[y*MAP_W+x]>0;}
+
+function buildMap(){
+  MAP=Array.from({length:MAP_H},()=>new Uint8Array(MAP_W));
+  WALK=new Uint8Array(MAP_W*MAP_H);
+  for(let gr=0;gr<GRID_ROWS;gr++)
+    for(let gc=0;gc<GRID_COLS;gc++){
+      if(!ISLAND_GRID[gr][gc])continue;
+      for(let dy=0;dy<CELL;dy++)for(let dx=0;dx<CELL;dx++){
+        const tx=ISL_X+gc*CELL+dx, ty=ISL_Y+gr*CELL+dy;
+        setTile(tx,ty,((tx+ty)%2===0)?1:2);
+      }
+    }
+}
+
+// Items
+const ITEM_DATA=[
+  {e:'✏️',label:'Pen Tool',    col:'#f9a',cat:'design',msg:'Design tool!\nPengcheng is a UI/UX designer.\nEvery pixel placed with purpose.'},
+  {e:'🎨',label:'Palette',     col:'#c8f',cat:'design',msg:'Colour palette!\nColour is his language.\nBeautiful interfaces flow from his hands.'},
+  {e:'📐',label:'Grid Ruler',  col:'#fa8',cat:'design',msg:'Grid ruler!\nStructure. Precision. Grids.\nForm always follows function.'},
+  {e:'🍁',label:'Maple Leaf',  col:'#f55',cat:'nation',msg:'Canadian icon!\nPengcheng Lu calls\nCanada his home.'},
+  {e:'🏔️',label:'BC Mountains',col:'#4cf',cat:'nation',msg:'BC Mountains!\nSurrey, British Columbia —\nHis city. His landscape.'},
+  {e:'🐉',label:'Dragon',      col:'#fd4',cat:'nation',msg:'Dragon!\n路鹏程 — roots in China,\nbuilding dreams in Canada.'},
+  {e:'🎵',label:'Music Note',  col:'#4fa',cat:'music', msg:'Music note!\nMelody fills his world.\nRhythm is his second language.'},
+  {e:'🎸',label:'Guitar',      col:'#f84',cat:'music', msg:'Guitar!\nStrings that sing his story.\nMusic is his release.'},
+  {e:'🎧',label:'Headphones',  col:'#94f',cat:'music', msg:'Headphones on!\nMusic on, world off.\nThis is Pengcheng\'s zone.'},
+];
+const PIP_COLS=['#f9a','#c8f','#fa8','#f55','#4cf','#fd4','#4fa','#f84','#94f'];
+let items=[];
+function buildItems(){
+  // Must be called AFTER buildMap so WALK is populated.
+  // Divide island X span into 5 letter bands (M O S1 E S2),
+  // collect only genuinely walkable tiles per band, pick evenly spread ones.
+  const islW=GRID_COLS*CELL;
+  const bw=islW/5;
+  // items per band: 3,2,1,2,1
+  const BAND_COUNTS=[3,2,1,2,1];
+  items=[];
+  let idx=0;
+  BAND_COUNTS.forEach((count,bi)=>{
+    const x0=Math.floor(ISL_X+bi*bw);
+    const x1=Math.floor(ISL_X+(bi+1)*bw);
+    // gather all solid tiles in this band
+    const tiles=[];
+    for(let ty=ISL_Y;ty<ISL_Y+GRID_ROWS*CELL;ty++)
+      for(let tx=x0;tx<x1;tx++)
+        if(isGround(tx,ty)) tiles.push({x:tx,y:ty});
+    // spread picks evenly
+    const step=Math.max(1,Math.floor(tiles.length/(count+1)));
+    for(let k=0;k<count&&idx<ITEM_DATA.length;k++,idx++){
+      const pick=tiles[Math.min(step*(k+1),tiles.length-1)];
+      items.push({...ITEM_DATA[idx],x:pick.x,y:pick.y,collected:false,bob:idx*17});
+    }
+  });
+}
+
+// Clouds
+let clouds=[];
+function buildClouds(){
+  clouds=[];
+  for(let i=0;i<22;i++) clouds.push({x:Math.random()*MAP_W,y:Math.random()*(PAD_T-1),w:5+Math.random()*14,h:2+Math.random()*4,spd:.003+Math.random()*.005,a:.25+Math.random()*.45});
+}
+
+// Canvas
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+let T=18, VW, VH;
+function resize(){
+  const W=window.innerWidth,H=window.innerHeight;
+  T=Math.max(12,Math.min(26,Math.floor(W/22)));
+  VW=Math.ceil(W/T)+2; VH=Math.ceil(H/T)+2;
+  canvas.width=W; canvas.height=H;
+}
+
+// Player
+const P={x:0,y:0,dir:'right',anim:0};
+function findStart(){
+  for(let gr=0;gr<GRID_ROWS;gr++)for(let gc=0;gc<GRID_COLS;gc++)
+    if(ISLAND_GRID[gr][gc]){P.x=ISL_X+gc*CELL+1;P.y=ISL_Y+gr*CELL+1;return;}
+}
+
+// Camera — now stores float zoom too
+const cam={x:0,y:0,zoom:1}; // zoom=1 normal, >1 means zoomed out
+function updateCam(){
+  if(cinPhase>0) return; // cinematic controls cam itself
+  cam.x+=(P.x-VW/2-cam.x)*0.13;
+  cam.y+=(P.y-VH/2-cam.y)*0.13;
+}
+
+// Input
+const keys={};
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
+  if((e.key==='Enter'||e.key===' ')&&msgOpen)closeMsg();
+});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+['bu','bd','bl','br'].forEach((id,i)=>{
+  const k=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'][i];
+  const el=document.getElementById(id);
+  el.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true;},{passive:false});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>{keys[k]=false;}));
+});
+let swipeStart=null;
+document.addEventListener('touchstart',e=>{swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(!swipeStart)return;
+  const dx=e.changedTouches[0].clientX-swipeStart.x,dy=e.changedTouches[0].clientY-swipeStart.y;
+  swipeStart=null;
+  if(Math.abs(dx)<15&&Math.abs(dy)<15){if(msgOpen)closeMsg();return;}
+  const k=Math.abs(dx)>Math.abs(dy)?(dx>0?'ArrowRight':'ArrowLeft'):(dy>0?'ArrowDown':'ArrowUp');
+  keys[k]=true;setTimeout(()=>{keys[k]=false;},200);
+},{passive:true});
+
+// Movement  (2.5× speed: 115 / 2.5 ≈ 46 ms per step)
+let moveTimer=0;
+const MOVE_MS=46;
+function doMove(dt){
+  if(msgOpen||cinPhase>0)return;
+  moveTimer+=dt;
+  if(moveTimer<MOVE_MS)return;
+  moveTimer=0;
+  let dx=0,dy=0;
+  if(keys['ArrowLeft']||keys['a']||keys['A']){dx=-1;P.dir='left';}
+  else if(keys['ArrowRight']||keys['d']||keys['D']){dx=1;P.dir='right';}
+  if(keys['ArrowUp']||keys['w']||keys['W']){dy=-1;P.dir='up';}
+  else if(keys['ArrowDown']||keys['s']||keys['S']){dy=1;P.dir='down';}
+  if(dx&&dy)dy=0;
+  if(!dx&&!dy)return;
+  const nx=P.x+dx,ny=P.y+dy;
+  if(!isGround(nx,ny))return;
+  P.x=nx;P.y=ny;P.anim++;
+  walkedSet.add(nx+','+ny);
+  checkCollect();
+}
+
+// Game state
+let walkedSet=new Set(),collected=0,particles=[];
+let msgOpen=false,gameFrame=0;
+let cinPhase=0; // 0=play 1=zoomout 2=flood 3=fly 4=part 5=done
+
+function checkCollect(){
+  items.forEach((it,idx)=>{
+    if(it.collected)return;
+    if(Math.abs(it.x-P.x)<=1&&Math.abs(it.y-P.y)<=1){
+      it.collected=true;collected++;
+      document.getElementById('hcol').textContent='✦ '+collected+' / 9';
+      const pip=document.getElementById('p'+idx);
+      if(pip){pip.classList.add('on');pip.style.background=PIP_COLS[idx];}
+      spawnBurst(it.x,it.y,it.col);
+      if(collected===9){
+        showMsg('✦ ALL COLLECTED ✦','You have gathered all the icons\nthat make up who you are.\n\nDesigner. Canadian. Music lover.\n\nNow witness your name...');
+        setTimeout(()=>{closeMsg();startCinematic();},3500);
+      } else {
+        showMsg(it.label,it.msg);
+      }
+    }
+  });
+}
+
+// Particles
+function spawnBurst(wx,wy,col){
+  for(let i=0;i<24;i++){
+    const a=(i/24)*Math.PI*2,sp=.6+Math.random()*3;
+    particles.push({x:wx*T+T/2,y:wy*T+T/2,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-1.8,col,life:42,ml:42,sz:2+(Math.random()*3|0)});
+  }
+}
+function updateParticles(){
+  particles=particles.filter(p=>p.life>0);
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.12;p.life--;});
+}
+
+// ═══════════════════════════════════════════════════
+// CINEMATIC ENGINE
+// ═══════════════════════════════════════════════════
+let cinT=0;
+let cinCamX=0, cinCamY=0, cinScale=1;
+let cinStartCamX=0, cinStartCamY=0; // camera snapshot at cinematic start
+let floodLevel=0;
+let playerFlyY=0;
+let partWidth=0;
+let mosesRevealAlpha=0;
+const subtitleEl=document.getElementById('subtitle');
+const stEl=document.getElementById('sttext');
+
+function showSubtitle(text){ stEl.innerHTML=text.replace(/\n/g,'<br>'); subtitleEl.style.opacity='1'; }
+function hideSubtitle(){ subtitleEl.style.opacity='0'; }
+
+// All computed at call-time so canvas/T are definitely initialised
+// Centre point = green dot from reference image = tile (95.3, 35.7)
+const CIN_CENTRE_X = 95.3;
+const CIN_CENTRE_Y = 35.7;
+function fullScale(){ return Math.min(canvas.width/(MAP_W*T), canvas.height/(MAP_H*T)); }
+// When fully zoomed out, drawT = T * fullScale().
+// Camera in tile coords to put CIN_CENTRE at screen centre:
+//   screenX = (tile - camX) * drawT  =>  camX = tile - screenW/(2*drawT)
+function tgtCamX(){ const dt=T*fullScale(); return CIN_CENTRE_X - canvas.width /(2*dt); }
+function tgtCamY(){ const dt=T*fullScale(); return CIN_CENTRE_Y - canvas.height/(2*dt); }
+
+function startCinematic(){
+  document.getElementById('hud').style.display='none';
+  document.getElementById('dpad').style.display='none';
+  cinPhase=1; cinT=0;
+  // Snapshot the live camera position as zoom-out start point
+  cinStartCamX=cam.x; cinStartCamY=cam.y;
+  cinCamX=cam.x; cinCamY=cam.y; cinScale=1;
+  showSubtitle('Your journey is complete...');
+}
+
+function easeOut(t){ return 1-(1-t)*(1-t); }
+function easeInOut(t){ return t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2; }
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+function updateCinematic(){
+  cinT++;
+
+  // ── Phase 1: Zoom out  8s @ 60fps = 480 frames ────────────
+  if(cinPhase===1){
+    const dur=480, prog=Math.min(cinT/dur,1), e=easeInOut(prog);
+    cinCamX  = lerp(cinStartCamX, tgtCamX(), e);
+    cinCamY  = lerp(cinStartCamY, tgtCamY(), e);
+    cinScale = lerp(1, fullScale(), e);
+    if(cinT===80)  showSubtitle('Look at the island\nyou walked...');
+    if(cinT===280) showSubtitle('Your name was always\nwritten in the land.');
+    if(prog>=1){ cinPhase=2; cinT=0; showSubtitle('The waters are rising...'); }
+  }
+
+  // ── Phase 2: Flood  9s = 540 frames ───────────────────────
+  else if(cinPhase===2){
+    const dur=540, prog=Math.min(cinT/dur,1);
+    floodLevel = easeInOut(prog);
+    // Stay fully zoomed out
+    cinCamX=tgtCamX(); cinCamY=tgtCamY(); cinScale=fullScale();
+    if(cinT===80)  showSubtitle('The sea rises...');
+    if(cinT===240) showSubtitle('Everything is swallowed\nby the flood.');
+    if(cinT===420) showSubtitle('But Moses stands firm.');
+    if(prog>=1){ cinPhase=3; cinT=0; showSubtitle('Moses rises above the flood.'); }
+  }
+
+  // ── Phase 3: Player flies up  2s = 120 frames ─────────────
+  else if(cinPhase===3){
+    const dur=120, prog=Math.min(cinT/dur,1);
+    playerFlyY = lerp(0, -canvas.height*0.32, easeOut(prog));
+    if(cinT===60) showSubtitle('He raises his hand...');
+    if(prog>=1){ cinPhase=4; cinT=0; showSubtitle('And parts the sea.'); }
+  }
+
+  // ── Phase 4: Part the sea  9s = 540 frames ────────────────
+  else if(cinPhase===4){
+    const dur=540, prog=Math.min(cinT/dur,1);
+    partWidth = easeOut(prog);
+    if(cinT===60)  showSubtitle('The sea splits apart...');
+    if(cinT===200) showSubtitle('The island is revealed.');
+    if(cinT===340) showSubtitle('Your name, written\nacross the world.');
+    mosesRevealAlpha = cinT>320 ? Math.min(1,(cinT-320)/80) : 0;
+    if(prog>=1){ cinPhase=5; cinT=0; }
+  }
+
+  // ── Phase 5: Hold then endcard ────────────────────────────
+  else if(cinPhase===5){
+    mosesRevealAlpha=1;
+    if(cinT===1)   showSubtitle('路鹏程 · Pengcheng (Moses) Lu');
+    if(cinT===180){
+      hideSubtitle();
+      setTimeout(()=>{ canvas.style.display='none'; document.getElementById('endcard').style.display='flex'; }, 600);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════
+function drawBg(){
+  const g=ctx.createLinearGradient(0,0,0,canvas.height);
+  g.addColorStop(0,'#5a9fd4');g.addColorStop(.6,'#9ecfee');g.addColorStop(1,'#cce8f8');
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  clouds.forEach(cl=>{
+    cl.x+=cl.spd;if(cl.x>MAP_W+20)cl.x=-20;
+    const sx=(cl.x-drawCam.x)*drawT,sy=(cl.y-drawCam.y)*drawT;
+    if(sx<-cl.w*drawT*2||sx>canvas.width+cl.w*drawT)return;
+    const cw=cl.w*drawT*.5,ch=cl.h*drawT*.5;
+    ctx.globalAlpha=cl.a;ctx.fillStyle='#fff';
+    ctx.beginPath();
+    ctx.ellipse(sx,sy,cw*.7,ch*.6,0,0,Math.PI*2);
+    ctx.ellipse(sx+cw*.5,sy-ch*.3,cw*.6,ch*.7,0,0,Math.PI*2);
+    ctx.ellipse(sx+cw,sy,cw*.7,ch*.55,0,0,Math.PI*2);
+    ctx.ellipse(sx+cw*.25,sy+ch*.15,cw*.8,ch*.5,0,0,Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha=1;ctx.restore();
+}
+
+// drawCam and drawT are the effective camera/tile used this frame
+let drawCam={x:0,y:0}, drawT=18;
+
+const CA='#2c2c2c',CB='#363636',CE='#555',CW='#3a2800';
+function drawGround(){
+  const x0=Math.floor(drawCam.x)-1,y0=Math.floor(drawCam.y)-1;
+  const x1=x0+Math.ceil(canvas.width/drawT)+3,y1=y0+Math.ceil(canvas.height/drawT)+3;
+  for(let ty=Math.max(0,y0);ty<Math.min(MAP_H,y1);ty++){
+    for(let tx=Math.max(0,x0);tx<Math.min(MAP_W,x1);tx++){
+      const t=MAP[ty][tx];if(!t)continue;
+      const sx=Math.round((tx-drawCam.x)*drawT),sy=Math.round((ty-drawCam.y)*drawT);
+      const walked=walkedSet.has(tx+','+ty);
+      ctx.fillStyle=walked?CW:(t===1?CA:CB);
+      ctx.fillRect(sx,sy,drawT+1,drawT+1);
+      if(!(ty>0&&MAP[ty-1][tx])){ctx.fillStyle=walked?'#6a4a10':CE;ctx.fillRect(sx,sy,drawT+1,2);}
+      if(!(tx<MAP_W-1&&MAP[ty][tx+1])){ctx.fillStyle='rgba(0,0,0,.32)';ctx.fillRect(sx+drawT-1,sy+2,2,drawT-1);}
+      if(!(ty<MAP_H-1&&MAP[ty+1][tx])){ctx.fillStyle='rgba(0,0,0,.4)';ctx.fillRect(sx,sy+drawT-1,drawT+1,3);}
+    }
+  }
+}
+
+function drawItems(){
+  if(cinPhase>0) return; // items hidden during cinematic
+  items.forEach(it=>{
+    if(it.collected)return;
+    it.bob++;
+    const bob=Math.sin(it.bob*.09)*2.5;
+    const sx=Math.round((it.x-drawCam.x)*drawT)+drawT/2;
+    const sy=Math.round((it.y-drawCam.y)*drawT)+drawT/2+bob;
+    if(sx<-drawT*2||sx>canvas.width+drawT*2||sy<-drawT*2||sy>canvas.height+drawT*2)return;
+    const r=drawT*.85+Math.sin(it.bob*.1)*1.5;
+    ctx.save();ctx.globalAlpha=.18+.14*Math.sin(it.bob*.11);
+    ctx.fillStyle=it.col;ctx.beginPath();ctx.arc(sx,sy,r*1.7,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.fillStyle='rgba(0,0,0,.78)';ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=it.col;ctx.lineWidth=2;ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);ctx.stroke();
+    ctx.font=Math.round(drawT*.9)+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(it.e,sx,sy);
+  });
+}
+
+function drawPlayer(){
+  // During cinematic phase 3+, player floats to centre
+  let sx,sy;
+  if(cinPhase===0||cinPhase===1||cinPhase===2){
+    sx=Math.round((P.x-drawCam.x)*drawT);
+    sy=Math.round((P.y-drawCam.y)*drawT)+playerFlyY;
+  } else if(cinPhase>=3){
+    // Player at screen centre-ish
+    sx=canvas.width/2-drawT/2;
+    sy=canvas.height*0.42+playerFlyY;
+  }
+  if(cinPhase>=4){ // rising glow during parting
+    ctx.save();
+    ctx.globalAlpha=0.4+0.3*Math.sin(gameFrame*.08);
+    ctx.fillStyle='#ffe050';
+    ctx.beginPath();ctx.arc(sx+drawT/2,sy+drawT/2,drawT*2,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+
+  const s=drawT,bob=(P.anim%8<4)?-1:0,walk=P.anim%8,by=sy+bob,u=s/16;
+  ctx.save();ctx.globalAlpha=.22;ctx.fillStyle='#000';
+  ctx.beginPath();ctx.ellipse(sx+s/2,sy+s-1,s*.38,s*.18,0,0,Math.PI*2);ctx.fill();ctx.restore();
+  ctx.fillStyle='#3355bb';
+  if(walk<4){ctx.fillRect(sx+4*u,by+10*u,3*u,5*u);ctx.fillRect(sx+9*u,by+12*u,3*u,3*u);ctx.fillStyle='#223399';ctx.fillRect(sx+4*u,by+14*u,3*u,2*u);}
+  else{ctx.fillRect(sx+9*u,by+10*u,3*u,5*u);ctx.fillRect(sx+4*u,by+12*u,3*u,3*u);ctx.fillStyle='#223399';ctx.fillRect(sx+9*u,by+14*u,3*u,2*u);}
+  ctx.fillStyle='#cc3333';ctx.fillRect(sx+3*u,by+4*u,10*u,7*u);
+  ctx.fillStyle='#aa1111';ctx.fillRect(sx+3*u,by+4*u,10*u,2*u);
+  ctx.fillStyle='#eee';ctx.fillRect(sx+7*u,by+5*u,2*u,2*u);
+  ctx.fillStyle='#cc7744';
+  ctx.fillRect(sx+1*u,by+5*u+(walk<4?u:0),2*u,5*u);
+  ctx.fillRect(sx+13*u,by+5*u+(walk<4?0:u),2*u,5*u);
+  ctx.fillStyle='#cc9955';ctx.fillRect(sx+4*u,by,8*u,6*u);
+  ctx.fillStyle='#1a0800';ctx.fillRect(sx+4*u,by,8*u,2*u);ctx.fillRect(sx+4*u,by,2*u,3*u);ctx.fillRect(sx+10*u,by,2*u,2*u);
+  ctx.fillStyle='#111';
+  if(P.dir==='right')ctx.fillRect(sx+10*u,by+2*u,2*u,2*u);
+  else if(P.dir==='left')ctx.fillRect(sx+4*u,by+2*u,2*u,2*u);
+  else{ctx.fillRect(sx+5*u,by+2*u,2*u,2*u);ctx.fillRect(sx+9*u,by+2*u,2*u,2*u);}
+}
+
+function drawParticles(){
+  if(cinPhase>0)return;
+  ctx.save();
+  particles.forEach(p=>{ctx.globalAlpha=p.life/p.ml;ctx.fillStyle=p.col;ctx.fillRect(p.x-drawCam.x*drawT,p.y-drawCam.y*drawT,p.sz,p.sz);});
+  ctx.globalAlpha=1;ctx.restore();
+}
+
+function drawFlood(){
+  if(floodLevel<=0) return;
+  const islandTop    = ISL_Y;
+  const islandBottom = ISL_Y + GRID_ROWS*CELL;
+  // Water surface rises from bottom: floodLevel=1 → surface at top of island
+  const floodTileY = islandBottom - floodLevel*(islandBottom - islandTop + PAD_T + 2);
+  const floodScreenY = Math.round((floodTileY - drawCam.y)*drawT);
+
+  ctx.save();
+
+  if(partWidth > 0){
+    // Phase 4: sea parted — show corridor cut through flood
+    const midX  = canvas.width/2;
+    const halfW = partWidth * (canvas.width * 0.44);
+
+    // Draw flood on LEFT of corridor
+    ctx.fillStyle = `rgba(20,70,160,${Math.min(0.93, floodLevel*1.1)})`;
+    ctx.fillRect(0, floodScreenY, midX-halfW, canvas.height - floodScreenY);
+
+    // Draw flood on RIGHT of corridor
+    ctx.fillRect(midX+halfW, floodScreenY, canvas.width-(midX+halfW), canvas.height - floodScreenY);
+
+    // Wave shimmer — left side
+    for(let wx=0; wx<midX-halfW; wx+=Math.max(2,drawT)){
+      if(Math.sin(gameFrame*.05+wx*.2)>.2){
+        ctx.fillStyle=`rgba(40,100,200,${floodLevel*.7})`;
+        ctx.fillRect(wx, floodScreenY, Math.max(2,drawT), Math.max(2,drawT));
+      }
+    }
+    // Wave shimmer — right side
+    for(let wx=midX+halfW; wx<canvas.width; wx+=Math.max(2,drawT)){
+      if(Math.sin(gameFrame*.05+wx*.2)>.2){
+        ctx.fillStyle=`rgba(40,100,200,${floodLevel*.7})`;
+        ctx.fillRect(wx, floodScreenY, Math.max(2,drawT), Math.max(2,drawT));
+      }
+    }
+
+    // Foam line at water surface
+    ctx.fillStyle=`rgba(180,230,255,${floodLevel*.65})`;
+    ctx.fillRect(0, floodScreenY, midX-halfW, Math.max(2, Math.round(drawT*.3)));
+    ctx.fillRect(midX+halfW, floodScreenY, canvas.width-(midX+halfW), Math.max(2, Math.round(drawT*.3)));
+
+    // Towering water walls
+    const wallW = Math.max(drawT*2, halfW*.14);
+    const g1=ctx.createLinearGradient(midX-halfW-wallW,0,midX-halfW,0);
+    g1.addColorStop(0,`rgba(20,70,160,${floodLevel*.9})`);
+    g1.addColorStop(1,`rgba(80,190,255,${floodLevel})`);
+    ctx.fillStyle=g1;
+    ctx.fillRect(midX-halfW-wallW, floodScreenY, wallW+2, canvas.height);
+
+    const g2=ctx.createLinearGradient(midX+halfW,0,midX+halfW+wallW,0);
+    g2.addColorStop(0,`rgba(80,190,255,${floodLevel})`);
+    g2.addColorStop(1,`rgba(20,70,160,${floodLevel*.9})`);
+    ctx.fillStyle=g2;
+    ctx.fillRect(midX+halfW-2, floodScreenY, wallW+2, canvas.height);
+
+    // Wall foam streaks
+    const streakH = Math.max(4, drawT*.6);
+    const streakGap = Math.max(10, drawT*2);
+    for(let wy2=floodScreenY; wy2<canvas.height; wy2+=streakGap){
+      const off = (gameFrame*1.2 + wy2) % streakGap;
+      ctx.fillStyle=`rgba(200,240,255,${partWidth*.75})`;
+      ctx.fillRect(midX-halfW-5, floodScreenY+off, 10, streakH);
+      ctx.fillRect(midX+halfW-5, floodScreenY+off, 10, streakH);
+    }
+
+  } else {
+    // Phase 2: full flood, no parting yet
+    ctx.fillStyle=`rgba(20,70,160,${Math.min(0.93, floodLevel*1.1)})`;
+    ctx.fillRect(0, floodScreenY, canvas.width, canvas.height - floodScreenY);
+
+    // Wave shimmer
+    for(let wx=0; wx<canvas.width; wx+=Math.max(2,drawT)){
+      if(Math.sin(gameFrame*.05+wx*.2)>.2){
+        ctx.fillStyle=`rgba(40,100,200,${floodLevel*.7})`;
+        ctx.fillRect(wx, floodScreenY, Math.max(2,drawT), Math.max(2,drawT));
+      }
+    }
+    // Foam surface line
+    ctx.fillStyle=`rgba(180,230,255,${floodLevel*.65})`;
+    ctx.fillRect(0, floodScreenY, canvas.width, Math.max(2, Math.round(drawT*.3)));
+  }
+
+  ctx.restore();
+}
+
+// ─── ITEM COMPASS ────────────────────────────────────────────
+// Draws edge arrows pointing toward uncollected items off-screen,
+// plus a mini radar panel in the bottom-right corner.
+function drawCompass(){
+  if(cinPhase>0) return;
+  const uncollected = items.filter(it=>!it.collected);
+  if(!uncollected.length) return;
+
+  const W=canvas.width, H=canvas.height;
+  const EDGE=28;        // px from screen edge for arrow tip
+  const MARGIN=52;      // keep arrows away from corners
+  const R=13;           // arrow head size
+
+  // Find nearest uncollected item to highlight specially
+  let nearest=null, nearestDist=Infinity;
+  uncollected.forEach(it=>{
+    const d=Math.hypot(it.x-P.x, it.y-P.y);
+    if(d<nearestDist){nearestDist=d;nearest=it;}
+  });
+
+  uncollected.forEach(it=>{
+    // Screen position of item
+    const sx=(it.x-drawCam.x)*drawT + drawT/2;
+    const sy=(it.y-drawCam.y)*drawT + drawT/2;
+
+    // If item is visible on screen, skip arrow
+    if(sx>EDGE*2&&sx<W-EDGE*2&&sy>EDGE*2&&sy<H-EDGE*2) return;
+
+    // Direction from screen centre to item
+    const cx=W/2, cy=H/2;
+    const angle=Math.atan2(sy-cy, sx-cx);
+
+    // Clamp tip to screen edge rectangle
+    const cos=Math.cos(angle), sin=Math.sin(angle);
+    // Find t so that cx+t*cos and cy+t*sin hit an edge
+    const tX = cos!==0 ? ((cos>0 ? W-EDGE : EDGE) - cx)/cos : Infinity;
+    const tY = sin!==0 ? ((sin>0 ? H-EDGE : EDGE) - cy)/sin : Infinity;
+    let t = Math.min(Math.abs(tX), Math.abs(tY));
+    let tipX = cx + cos*t;
+    let tipY = cy + sin*t;
+    // Clamp to keep away from corners
+    tipX = Math.max(MARGIN, Math.min(W-MARGIN, tipX));
+    tipY = Math.max(MARGIN, Math.min(H-MARGIN, tipY));
+
+    const isNearest = it===nearest;
+    const pulse = 0.65 + 0.35*Math.sin(gameFrame*0.12);
+
+    ctx.save();
+    ctx.translate(tipX, tipY);
+    ctx.rotate(angle);
+
+    // Glow
+    ctx.globalAlpha = isNearest ? pulse*0.5 : 0.25;
+    ctx.fillStyle = it.col;
+    ctx.beginPath();
+    ctx.arc(0,0,R*2,0,Math.PI*2);
+    ctx.fill();
+
+    // Arrow body
+    ctx.globalAlpha = isNearest ? pulse : 0.7;
+    ctx.fillStyle = it.col;
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(R,   0);
+    ctx.lineTo(-R*0.6,  R*0.7);
+    ctx.lineTo(-R*0.2,  0);
+    ctx.lineTo(-R*0.6, -R*0.7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Emoji label next to arrow
+    ctx.rotate(-angle); // unrotate for emoji
+    ctx.globalAlpha = isNearest ? pulse : 0.75;
+    ctx.font = `${isNearest?14:11}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // offset label so it doesn't overlap arrow
+    const lx = Math.cos(-angle+Math.PI)*22;
+    const ly = Math.sin(-angle+Math.PI)*22;
+    // distance badge
+    const dist = Math.round(Math.hypot(it.x-P.x, it.y-P.y));
+    ctx.fillText(it.e, lx, ly);
+    if(isNearest){
+      ctx.font = "7px 'Press Start 2P', monospace";
+      ctx.fillStyle='#fff';
+      ctx.globalAlpha=pulse*0.9;
+      ctx.fillText(dist+'t', lx, ly+14);
+    }
+
+    ctx.restore();
+  });
+
+  // ── Mini radar in bottom-right ─────────────────────────────
+  const RW=90, RH=56, RX=W-RW-10, RY=H-RH-10;
+  // Radar shows remaining items count + category pips
+  ctx.save();
+  ctx.globalAlpha=0.85;
+  ctx.fillStyle='rgba(0,0,0,0.75)';
+  roundRect(ctx, RX, RY, RW, RH, 6);
+  ctx.fill();
+  ctx.strokeStyle='#4af';
+  ctx.lineWidth=1.5;
+  roundRect(ctx, RX, RY, RW, RH, 6);
+  ctx.stroke();
+
+  ctx.font="7px 'Press Start 2P', monospace";
+  ctx.fillStyle='#4af';
+  ctx.textAlign='left';
+  ctx.textBaseline='top';
+  ctx.globalAlpha=1;
+  ctx.fillText('ITEMS', RX+8, RY+7);
+
+  // Category rows
+  const cats=[
+    {label:'✏️',col:'#f9a',total:3,done:items.filter(it=>it.cat==='design'&&it.collected).length},
+    {label:'🍁',col:'#f55',total:3,done:items.filter(it=>it.cat==='nation'&&it.collected).length},
+    {label:'🎵',col:'#4fa',total:3,done:items.filter(it=>it.cat==='music' &&it.collected).length},
+  ];
+  cats.forEach((c,ci)=>{
+    const row=RY+20+ci*12;
+    ctx.font='10px serif';
+    ctx.fillText(c.label, RX+8, row);
+    for(let k=0;k<c.total;k++){
+      ctx.fillStyle = k<c.done ? c.col : 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.arc(RX+30+k*14, row+5, 4, 0, Math.PI*2);
+      ctx.fill();
+    }
+  });
+  ctx.restore();
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+function drawMosesLabel(){
+  if(mosesRevealAlpha<=0)return;
+  ctx.save();
+  ctx.globalAlpha=mosesRevealAlpha;
+  // Big MOSES text centred
+  const fs=Math.round(Math.min(canvas.width*.12, canvas.height*.14));
+  ctx.font=`${fs}px 'Press Start 2P', monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,.6)';
+  ctx.fillText('MOSES',canvas.width/2+4,canvas.height*.72+4);
+  // Gold text
+  const grd=ctx.createLinearGradient(0,canvas.height*.65,0,canvas.height*.78);
+  grd.addColorStop(0,'#ffe87a');grd.addColorStop(.5,'#ffd020');grd.addColorStop(1,'#c88000');
+  ctx.fillStyle=grd;
+  ctx.fillText('MOSES',canvas.width/2,canvas.height*.72);
+  // Subtitle
+  ctx.font=`${Math.round(fs*.22)}px 'Press Start 2P', monospace`;
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.fillText('路鹏程 · Pengcheng Lu',canvas.width/2,canvas.height*.72+fs*.7);
+  ctx.restore();
+}
+
+// Msg
+function showMsg(title,body){msgOpen=true;document.getElementById('mt').textContent=title;document.getElementById('mb').innerHTML=body.replace(/\n/g,'<br>');document.getElementById('msgbox').style.display='block';}
+function closeMsg(){msgOpen=false;document.getElementById('msgbox').style.display='none';}
+
+// ═══════════════════════════════════════════════════
+// MAIN LOOP
+// ═══════════════════════════════════════════════════
+let running=false,lastTs=0;
+
+function loop(ts){
+  if(!running)return;
+  const dt=Math.min(ts-lastTs,50);lastTs=ts;gameFrame++;
+  P.anim++;
+
+  doMove(dt);
+  updateParticles();
+
+  // Cinematic update
+  if(cinPhase>0) updateCinematic();
+  else updateCam();
+
+  // Compute draw camera & tile size this frame
+  if(cinPhase>0){
+    drawT=T*cinScale;
+    drawCam.x=cinCamX; drawCam.y=cinCamY;
+  } else {
+    drawT=T; drawCam.x=cam.x; drawCam.y=cam.y;
+  }
+
+  // RENDER
+  drawBg();
+  drawGround();
+  drawItems();
+  drawCompass();
+  drawParticles();
+  drawPlayer();
+  drawFlood();
+  drawMosesLabel();
+
+  requestAnimationFrame(loop);
+}
+
+// Start
+function startGame(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  if('ontouchstart' in window)document.getElementById('dpad').style.display='flex';
+  resize();window.addEventListener('resize',resize);
+  buildMap();buildItems();buildClouds();findStart();
+  walkedSet.add(P.x+','+P.y);
+  cam.x=P.x-VW/2;cam.y=P.y-VH/2;
+  running=true;
+  requestAnimationFrame(t=>{lastTs=t;loop(t);});
+  setTimeout(()=>showMsg('路鹏程 · PENGCHENG LU',
+    'You stand on a floating island\nshaped like your name: MOSES\n\nCollect 9 icons across the letters:\n✏️ Design · 🍁 Canada · 🎵 Music\n\nCollect them all to reveal your destiny.'),500);
+}
+document.getElementById('startBtn').addEventListener('click',startGame);
+</script>
+</body>
+</html>
