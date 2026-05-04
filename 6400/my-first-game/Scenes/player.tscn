@@ -131,6 +131,7 @@ script = ExtResource("1_cvnsp")
 moveSpeed = 100.0
 animator = NodePath("AnimatedSprite2D")
 bullet_scene = ExtResource("2_6t5aa")
+fire_rate = 0.8
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=452921139]
 sprite_frames = SubResource("SpriteFrames_x3wgy")
@@ -142,7 +143,9 @@ frame_progress = 0.8363085
 position = Vector2(0, 5)
 shape = SubResource("CircleShape2D_cvnsp")
 
-[node name="Timer" type="Timer" parent="." unique_id=865982212]
+[node name="RestartTimer" type="Timer" parent="." unique_id=865982212]
+wait_time = 3.0
+one_shot = true
 autostart = true
 
 [node name="FireAuido" type="AudioStreamPlayer" parent="." unique_id=1192976570]
@@ -157,4 +160,5 @@ volume_db = -4.727
 stream = ExtResource("5_fkybt")
 volume_db = -4.727
 
-[connection signal="timeout" from="Timer" to="." method="_on_fire"]
+[connection signal="timeout" from="RestartTimer" to="." method="_reload_scene"]
+[connection signal="timeout" from="RestartTimer" to="." method="_on_fire"]

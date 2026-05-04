@@ -7,13 +7,20 @@ extends CharacterBody2D
 @export var is_game_over : bool = false
 
 @export var bullet_scene : PackedScene
+
+@export var fire_rate : float = 0.3
+
+var fire_timer : float = 0.0
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	if velocity == Vector2.ZERO or is_game_over:
 		$RunningAuido.stop()
 	elif not $RunningAuido.playing:
 		$RunningAuido.play()
-	
+	fire_timer -= delta
+	if fire_timer <= 0.0:
+		fire_timer = fire_rate
+		_on_fire()
 
 func _physics_process(delta: float) -> void:
 	if not is_game_over:
@@ -36,9 +43,9 @@ func gameOver():
 
 
 func _on_fire() -> void:
-	if velocity != Vector2.ZERO or is_game_over:
+	if is_game_over or velocity != Vector2.ZERO:
 		return
 	$FireAuido.play()
 	var bullet_node = bullet_scene.instantiate()
-	bullet_node.position = position + Vector2(10,2)
-	get_tree().current_scene.add_child(bullet_node)
+	bullet_node.position = position + Vector2(10, 2)
+	get_owner().add_child(bullet_node)

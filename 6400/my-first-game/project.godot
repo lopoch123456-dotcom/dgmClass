@@ -19,6 +19,10 @@ config/icon="res://icon.svg"
 
 Bgm="*uid://dacoq8662gn1l"
 
+[display]
+
+window/stretch/mode="canvas_items"
+
 [input]
 
 left={
