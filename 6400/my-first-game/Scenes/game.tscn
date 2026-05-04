@@ -5,6 +5,7 @@
 [ext_resource type="Texture2D" uid="uid://b4l5vs33elkgy" path="res://AssetBundle/Sprites/background.png" id="3_3dryh"]
 [ext_resource type="PackedScene" uid="uid://dfrje1n5604mk" path="res://Scenes/slime.tscn" id="3_wrm1d"]
 [ext_resource type="FontFile" uid="uid://lu3av5mrb3kq" path="res://AssetBundle/Uranus_Pixel_11Px.ttf" id="5_wowpa"]
+[ext_resource type="PackedScene" uid="uid://tp61rbl7aspj" path="res://Scenes/item.tscn" id="6_i6g32"]
 
 [sub_resource type="WorldBoundaryShape2D" id="WorldBoundaryShape2D_qxrlw"]
 
@@ -15,6 +16,7 @@ slime_scene = ExtResource("3_wrm1d")
 spawn_timer = NodePath("Timer")
 score_label = NodePath("CanvasLayer/Label")
 game_over_label = NodePath("CanvasLayer/Game over label")
+item_scene = ExtResource("6_i6g32")
 
 [node name="background" type="Sprite2D" parent="." unique_id=506401303]
 position = Vector2(-2.0000048, 9.999999)
@@ -27,7 +29,7 @@ zoom = Vector2(2.59, 2.59)
 metadata/_edit_lock_ = true
 
 [node name="player" parent="." unique_id=1873307796 instance=ExtResource("2_qxrlw")]
-position = Vector2(-199, 36)
+position = Vector2(-190, 49)
 moveSpeed = 200.0
 
 [node name="airWall" type="Node" parent="." unique_id=1683148934]
@@ -62,6 +64,7 @@ metadata/_edit_lock_ = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="airWall/StaticBody2D2" unique_id=164973387]
 shape = SubResource("WorldBoundaryShape2D_qxrlw")
+metadata/_edit_lock_ = true
 
 [node name="Timer" type="Timer" parent="." unique_id=1901733433]
 wait_time = 3.0

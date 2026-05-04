@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://tp61rbl7aspj"]
+
+[ext_resource type="Script" uid="uid://iivlfncovcgb" path="res://scprit/item.gd" id="1_76mu4"]
+[ext_resource type="Texture2D" uid="uid://c8vd1mrfo2ag4" path="res://AssetBundle/Sprites/itemSprite.png" id="1_ys0gr"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_76mu4"]
+atlas = ExtResource("1_ys0gr")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_u06aw"]
+atlas = ExtResource("1_ys0gr")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_u06aw"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_76mu4")
+}],
+"loop": true,
+"name": &"rapid_fire ",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_u06aw")
+}],
+"loop": true,
+"name": &"triple_shot",
+"speed": 5.0
+}]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_btogu"]
+radius = 15.0
+
+[node name="Area2D" type="Area2D" unique_id=1263934008]
+script = ExtResource("1_76mu4")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=153428387]
+sprite_frames = SubResource("SpriteFrames_u06aw")
+animation = &"rapid_fire "
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=905465761]
+shape = SubResource("CircleShape2D_btogu")
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
