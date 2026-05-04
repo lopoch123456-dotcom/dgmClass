@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://css31rmvea8i6"]
+
+[ext_resource type="Texture2D" uid="uid://bnrj36gjsfpwv" path="res://PrisonGameAssetBundle/background.png" id="1_ebmjs"]
+[ext_resource type="PackedScene" uid="uid://debsvnrq31sma" path="res://Scenes/player.tscn" id="2_qxrlw"]
+
+[node name="Node2D" type="Node2D" unique_id=231590141]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=400959242]
+position = Vector2(2, -5)
+scale = Vector2(0.30520174, 0.30520168)
+texture = ExtResource("1_ebmjs")
+metadata/_edit_lock_ = true
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1045282450]
+offset = Vector2(0, -0.01)
+zoom = Vector2(3.355, 3.355)
+metadata/_edit_lock_ = true
+
+[node name="player" parent="." unique_id=1595952324 instance=ExtResource("2_qxrlw")]
+position = Vector2(-31, 16)
